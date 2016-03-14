@@ -44,7 +44,7 @@ These instructions were tested with Java 8 (jdk-8u65-linux-x64.rpm on CentOS).
 
    This will get used by the HBase client code to find HBase. Ideally the code will be fixed someday not to require this, but to instead get these values from PIO variables and [specify them directly to the client](http://stackoverflow.com/questions/17347841/hbase-zookeeper-tells-remote-client-to-connect-to-localhost).
 1. Modify PredictionIO/conf/pio-env.sh in the following way:
-  * Comment out SPARK_HOME
+  * Comment out SPARK_HOME, this is set in .bash_profile below
   * Comment out POSTGRES_JDBC_DRIVER
   * Comment out MYSQL_JDBC_DRIVER
   * HBASE_CONF_DIR=$PIO_HOME/vendors/hbase-1.0.0/conf
@@ -61,6 +61,27 @@ These instructions were tested with Java 8 (jdk-8u65-linux-x64.rpm on CentOS).
   * PIO_STORAGE_SOURCES_HBASE_PORTS=0,0,0 # unknown, but must be list of same size as _HBASE_HOSTS
 1. Open port 7070 on this host; that's where events will get sent (that's the defalt port, but you can change it when launching the EventServer, in which case open the desired port here instead).
 
+###Spark
+
+Spark is required for the sake of its client code so that prediction.io
+servers can submit Spark jobs (via spark-submit). The prediction.io EventServer
+uses spark-submit to start import jobs for "pio import." The PredictionServer
+uses spark-submit to start training jobs for "pio train." So you need Spark for
+either type of server.
+
+These two server types don't participate in the Spark cluster, they just use
+the client code, so configuration is simpler.
+
+Inside the PredictionIO/vendors directory, untar the spark installation.
+Here are the steps taken from
+(prediction.io's linux installation instructions)[https://docs.prediction.io/install/install-linux/]:
+
+    $ wget http://d3kbcqa49mib13.cloudfront.net/spark-1.5.1-bin-hadoop2.6.tgz
+    $ tar zxvfC spark-1.5.1-bin-hadoop2.6.tgz PredictionIO-0.9.5/vendors
+
+If the location or version change, modify the SPARK_HOME variable set in
+.bash_profile below accordingly.
+
 ###Other Configuration
 
 ####.bash_profile
@@ -74,7 +95,8 @@ You'll need the following in your .bash_profile:
     export PIO_HOME=/home/pio/pio/PredictionIO
     export PATH=$PIO_HOME/bin:$PATH
     export JAVA_OPTS="-Xmx4g"
-    export SPARK_HOME=/usr/local/spark # but there's nothing there
+    export SPARK_HOME=/$PIO_HOME/vendors/spark-1.5.1-bin-hadoop2.6
+    export MASTER=spark://your-spark-master:7077 # where to submit spark jobs
 
 ####Open Ports
 
@@ -89,6 +111,9 @@ In order for the PIO servers to communicate with them, the hosts running other s
   Beware that [HBase is fussy over host ip resolution](http://stackoverflow.com/questions/7791788/hbase-client-do-not-able-to-connect-with-remote-hbase-server). Setting up /etc/hosts or DNS may require extra care.
 
   Note that if you're trying to run against a [standalone installation of HBase](http://hbase.apache.org/0.94/book/standalone_dist.html), this won't work; in that mode, HBase seems to assign random ports each time it is started, and relies on its client to query for the ports via Zookeeper; this stymies attempts to use it from off the standalone host because you won't know which ports to open in advance; the settings in hbase-site.xml seem to be ignored for this mode.
+
+* Spark Hosts
+  Open port 7077
 
 ##Automated Setup
 
